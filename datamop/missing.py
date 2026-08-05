@@ -24,23 +24,40 @@ import pandas as pd
 # =======================================================
 # 1. Detect Missing Values
 # =======================================================
-
 def detect_missing(df):
     """
     Count missing values in every column.
 
-    Parameters
-    ----------
-    df : pandas DataFrame
-
-    Returns
-    -------
-    pandas Series
-        Number of missing values in each column.
+    Detects:
+    - NaN
+    - None
+    - N/A
+    - ?
+    - -
+    - Unknown
+    - Blank cells
     """
 
-    return df.isnull().sum()
+    # Create a copy so the original DataFrame is not modified
+    temp_df = df.copy()
 
+    # Replace common missing value representations with Pandas NA
+    temp_df = temp_df.replace(
+        [
+            "N/A",
+            "n/a",
+            "?",
+            "-",
+            "Unknown",
+            "unknown",
+            "",
+            " "
+        ],
+        pd.NA
+    )
+
+    # Return missing value count for each column
+    return temp_df.isna().sum()
 
 # =======================================================
 # 2. Fill Numeric Missing Values Using Mean
@@ -280,5 +297,49 @@ def clean_missing_values(df, threshold=40, numeric_method="mean"):
     # Fill categorical columns
     # -----------------------------
     cleaned_df = fill_mode(cleaned_df)
+
+    return cleaned_df
+# ----------------------------------------------------------
+# 10. Fill Missing Values with a Constant Value
+# ----------------------------------------------------------
+
+def fill_constant(df, value="Unknown"):
+    """
+    Fill all missing values with a constant value.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    value : str or int or float
+        Value used to replace missing values.
+
+    Returns
+    -------
+    pandas.DataFrame
+        DataFrame after filling missing values.
+    """
+
+    # Create a copy so the original DataFrame is not modified
+    cleaned_df = df.copy()
+
+    # Replace common missing value representations with Pandas NA
+    cleaned_df = cleaned_df.replace(
+        [
+            "N/A",
+            "n/a",
+            "?",
+            "-",
+            "Unknown",
+            "unknown",
+            "",
+            " "
+        ],
+        pd.NA
+    )
+
+    # Fill all missing values
+    cleaned_df = cleaned_df.fillna(value)
 
     return cleaned_df

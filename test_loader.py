@@ -10,6 +10,7 @@ from datamop.loader import (
     dataset_info,
     column_names,
     data_types,
+    load_dataframe,
     summary_statistics
 )
 
@@ -52,3 +53,18 @@ dataset_info(df)
 
 print()
 summary_statistics(df)
+# ---------------------------------------------------
+# Test Existing DataFrame
+# ---------------------------------------------------
+
+print("\nTesting DataFrame Loader...")
+
+new_df = load_dataframe(df)
+
+print("Original Shape :", df.shape)
+print("Copied Shape   :", new_df.shape)
+
+if df.equals(new_df):
+    print("✓ DataFrame copied successfully!")
+else:
+    print("✗ Error while copying DataFrame.")

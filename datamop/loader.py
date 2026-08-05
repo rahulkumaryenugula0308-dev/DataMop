@@ -170,3 +170,23 @@ def summary_statistics(df):
     print("=" * 50)
 
     print(df.describe(include="all"))
+# ----------------------------------------------------------
+# 9.Load Existing DataFrame
+# ----------------------------------------------------------
+
+def load_dataframe(df):
+    """
+    Return a copy of an existing Pandas DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+        Input DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Copy of the DataFrame.
+    """
+
+    return df.copy()
