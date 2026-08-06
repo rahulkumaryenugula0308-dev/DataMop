@@ -1,47 +1,20 @@
 """
-datatype.py
-===========
+duplicates.py
 
-Module for detecting and converting data types
-in a pandas DataFrame.
-
-Author : Shurthy
-Project : DataMop
+Functions for finding and removing duplicate records.
 """
 
 import pandas as pd
+from difflib import SequenceMatcher
 
 
-def detect_type(df):
+def find_duplicates(df):
     """
-    Display the datatype of every column.
+    Return duplicate rows.
 
     Parameters
     ----------
     df : pandas.DataFrame
-
-    Returns
-    -------
-    pandas.Series
-    """
-
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Input must be a pandas DataFrame.")
-
-    return df.dtypes
-
-
-def convert_numeric(df, column):
-    """
-    Convert a column into numeric datatype.
-
-    Invalid values become NaN.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-
-    column : str
 
     Returns
     -------
@@ -51,25 +24,16 @@ def convert_numeric(df, column):
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Input must be a pandas DataFrame.")
 
-    if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
-
-    df[column] = pd.to_numeric(df[column], errors="coerce")
-
-    return df
+    return df[df.duplicated()]
 
 
-def convert_datetime(df, column):
+def drop_duplicates(df):
     """
-    Convert a column into datetime datatype.
-
-    Invalid values become NaT.
+    Remove duplicate rows.
 
     Parameters
     ----------
     df : pandas.DataFrame
-
-    column : str
 
     Returns
     -------
@@ -79,61 +43,52 @@ def convert_datetime(df, column):
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Input must be a pandas DataFrame.")
 
-    if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
-
-    df[column] = pd.to_datetime(df[column], errors="coerce")
-
-    return df
+    return df.drop_duplicates()
 
 
-def convert_boolean(df, column):
+def find_near_duplicates(df, threshold=0.90):
     """
-    Convert Yes/No, True/False, Y/N, 1/0
-    into Boolean datatype.
+    Find near duplicate rows using similarity matching.
 
     Parameters
     ----------
     df : pandas.DataFrame
-
-    column : str
+    threshold : float
 
     Returns
     -------
-    pandas.DataFrame
+    list
     """
 
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Input must be a pandas DataFrame.")
 
-    if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
+    rows = df.astype(str).agg(" ".join, axis=1)
 
-    mapping = {
-        "yes": True,
-        "no": False,
-        "true": True,
-        "false": False,
-        "1": True,
-        "0": False,
-        "y": True,
-        "n": False
-    }
+    similar = []
 
-    df[column] = (
-        df[column]
-        .astype(str)
-        .str.strip()
-        .str.lower()
-        .map(mapping)
-    )
+    for i in range(len(rows)):
+        for j in range(i + 1, len(rows)):
 
-    return df
+            score = SequenceMatcher(
+                None,
+                rows.iloc[i],
+                rows.iloc[j]
+            ).ratio()
+
+            if score >= threshold:
+                similar.append({
+                    "Row1": i,
+                    "Row2": j,
+                    "Similarity": round(score, 2)
+                })
+
+    return similar
 
 
-def datatype_summary(df):
+def duplicate_summary(df):
     """
-    Display datatype summary.
+    Return duplicate statistics.
 
     Parameters
     ----------
@@ -147,9 +102,16 @@ def datatype_summary(df):
     if not isinstance(df, pd.DataFrame):
         raise TypeError("Input must be a pandas DataFrame.")
 
-    summary = {}
+    duplicates = int(df.duplicated().sum())
 
-    for column in df.columns:
-        summary[column] = str(df[column].dtype)
+    summary = {
+        "Total Rows": len(df),
+        "Duplicate Rows": duplicates,
+        "Unique Rows": len(df) - duplicates,
+        "Duplicate Percentage": round(
+            (duplicates / len(df)) * 100,
+            2
+        ) if len(df) > 0 else 0
+    }
 
     return summary
