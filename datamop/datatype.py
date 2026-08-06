@@ -1,12 +1,7 @@
 """
 datatype.py
-===========
 
-Module for detecting and converting data types
-in a pandas DataFrame.
-
-Author : Shurthy
-Project : DataMop
+Functions for detecting and converting data types in pandas DataFrames.
 """
 
 import pandas as pd
@@ -14,7 +9,7 @@ import pandas as pd
 
 def detect_type(df):
     """
-    Display the datatype of every column.
+    Detect the datatype of each column.
 
     Parameters
     ----------
@@ -33,14 +28,11 @@ def detect_type(df):
 
 def convert_numeric(df, column):
     """
-    Convert a column into numeric datatype.
-
-    Invalid values become NaN.
+    Convert a column to numeric datatype.
 
     Parameters
     ----------
     df : pandas.DataFrame
-
     column : str
 
     Returns
@@ -52,23 +44,25 @@ def convert_numeric(df, column):
         raise TypeError("Input must be a pandas DataFrame.")
 
     if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
+        raise ValueError(f"Column '{column}' not found.")
 
-    df[column] = pd.to_numeric(df[column], errors="coerce")
+    result = df.copy()
 
-    return df
+    result[column] = pd.to_numeric(
+        result[column],
+        errors="coerce"
+    )
+
+    return result
 
 
 def convert_datetime(df, column):
     """
     Convert a column into datetime datatype.
 
-    Invalid values become NaT.
-
     Parameters
     ----------
     df : pandas.DataFrame
-
     column : str
 
     Returns
@@ -80,22 +74,25 @@ def convert_datetime(df, column):
         raise TypeError("Input must be a pandas DataFrame.")
 
     if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
+        raise ValueError(f"Column '{column}' not found.")
 
-    df[column] = pd.to_datetime(df[column], errors="coerce")
+    result = df.copy()
 
-    return df
+    result[column] = pd.to_datetime(
+        result[column],
+        errors="coerce"
+    )
+
+    return result
 
 
 def convert_boolean(df, column):
     """
-    Convert Yes/No, True/False, Y/N, 1/0
-    into Boolean datatype.
+    Convert Yes/No/True/False values into Boolean.
 
     Parameters
     ----------
     df : pandas.DataFrame
-
     column : str
 
     Returns
@@ -107,33 +104,33 @@ def convert_boolean(df, column):
         raise TypeError("Input must be a pandas DataFrame.")
 
     if column not in df.columns:
-        raise KeyError(f"Column '{column}' not found.")
+        raise ValueError(f"Column '{column}' not found.")
 
     mapping = {
         "yes": True,
-        "no": False,
         "true": True,
-        "false": False,
         "1": True,
-        "0": False,
-        "y": True,
-        "n": False
+        "no": False,
+        "false": False,
+        "0": False
     }
 
-    df[column] = (
-        df[column]
+    result = df.copy()
+
+    result[column] = (
+        result[column]
         .astype(str)
         .str.strip()
         .str.lower()
         .map(mapping)
     )
 
-    return df
+    return result
 
 
 def datatype_summary(df):
     """
-    Display datatype summary.
+    Return datatype summary.
 
     Parameters
     ----------
@@ -150,6 +147,10 @@ def datatype_summary(df):
     summary = {}
 
     for column in df.columns:
-        summary[column] = str(df[column].dtype)
+        summary[column] = {
+            "datatype": str(df[column].dtype),
+            "missing_values": int(df[column].isna().sum()),
+            "unique_values": int(df[column].nunique())
+        }
 
     return summary
