@@ -1,70 +1,26 @@
-"""
-=========================================
-Test File for loader.py
-=========================================
-"""
+from datamop.loader import load_file
 
-from datamop.loader import (
-    load_csv,
-    dataset_shape,
-    dataset_info,
-    column_names,
-    data_types,
-    load_dataframe,
-    summary_statistics
-)
 
-# ---------------------------------------------------
-# Load Dataset
-# ---------------------------------------------------
+# =========================================================
+# GIVE FILE PATH HERE
+# =========================================================
 
-df = load_csv(r"C:\Users\Ajay\Downloads\train.csv")
+file_path = r"C:\Users\Ajay\Downloads\Messy_Sales_Data_for_Analysis.xlsx"
 
-# ---------------------------------------------------
-# Display Shape
-# ---------------------------------------------------
 
-dataset_shape(df)
+# =========================================================
+# AUTOMATICALLY LOAD FILE
+# =========================================================
 
-# ---------------------------------------------------
-# Display Column Names
-# ---------------------------------------------------
+df = load_file(file_path)
 
-print()
-column_names(df)
 
-# ---------------------------------------------------
-# Display Data Types
-# ---------------------------------------------------
+# =========================================================
+# DISPLAY RESULT
+# =========================================================
 
-print()
-data_types(df)
+print("\nLoaded Dataset:")
+print("Shape:", df.shape)
 
-# ---------------------------------------------------
-# Display Dataset Information
-# ---------------------------------------------------
-
-print()
-dataset_info(df)
-
-# ---------------------------------------------------
-# Display Statistics
-# ---------------------------------------------------
-
-print()
-summary_statistics(df)
-# ---------------------------------------------------
-# Test Existing DataFrame
-# ---------------------------------------------------
-
-print("\nTesting DataFrame Loader...")
-
-new_df = load_dataframe(df)
-
-print("Original Shape :", df.shape)
-print("Copied Shape   :", new_df.shape)
-
-if df.equals(new_df):
-    print("✓ DataFrame copied successfully!")
-else:
-    print("✗ Error while copying DataFrame.")
+print("\nFirst 5 Rows:")
+print(df.head())

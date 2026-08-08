@@ -1,345 +1,183 @@
-"""
-=========================================================
-missing.py
-=========================================================
-
-Purpose:
---------
-This module contains all functions related to handling
-missing (NaN) values in a dataset.
-
-Author : Rahul
-Project: DataMop
-
-=========================================================
-"""
-
-# -------------------------------------------------------
-# Import Required Library
-# -------------------------------------------------------
-
 import pandas as pd
 
 
-# =======================================================
-# 1. Detect Missing Values
-# =======================================================
 def detect_missing(df):
-    """
-    Count missing values in every column.
+    return df.isnull().sum()
 
-    Detects:
-    - NaN
-    - None
-    - N/A
-    - ?
-    - -
-    - Unknown
-    - Blank cells
-    """
-
-    # Create a copy so the original DataFrame is not modified
-    temp_df = df.copy()
-
-    # Replace common missing value representations with Pandas NA
-    temp_df = temp_df.replace(
-        [
-            "N/A",
-            "n/a",
-            "?",
-            "-",
-            "Unknown",
-            "unknown",
-            "",
-            " "
-        ],
-        pd.NA
-    )
-
-    # Return missing value count for each column
-    return temp_df.isna().sum()
-
-# =======================================================
-# 2. Fill Numeric Missing Values Using Mean
-# =======================================================
 
 def fill_mean(df):
-    """
-    Fill missing values of numeric columns using Mean.
+    return df.fillna(df.mean(numeric_only=True))
 
-    Example:
-        Age
-        ----
-        20
-        NaN
-        30
-
-    Mean = 25
-
-    Output:
-        20
-        25
-        30
-    """
-
-    # Create a copy to protect original dataset
-    new_df = df.copy()
-
-    # Select only numeric columns
-    numeric_columns = new_df.select_dtypes(include="number").columns
-
-    # Replace NaN with column mean
-    new_df[numeric_columns] = new_df[numeric_columns].fillna(
-        new_df[numeric_columns].mean()
-    )
-
-    return new_df
-
-
-# =======================================================
-# 3. Fill Numeric Missing Values Using Median
-# =======================================================
 
 def fill_median(df):
-    """
-    Fill missing values using Median.
+    return df.fillna(df.median(numeric_only=True))
 
-    Median is useful when data contains outliers.
-    """
-
-    new_df = df.copy()
-
-    numeric_columns = new_df.select_dtypes(include="number").columns
-
-    new_df[numeric_columns] = new_df[numeric_columns].fillna(
-        new_df[numeric_columns].median()
-    )
-
-    return new_df
-
-
-# =======================================================
-# 4. Fill Missing Values Using Mode
-# =======================================================
 
 def fill_mode(df):
-    """
-    Fill missing values using Mode.
+    result = df.copy()
 
-    Works for both:
-    - Numeric columns
-    - Text columns
-    """
+    for column in result.columns:
+        if result[column].isnull().any():
+            mode = result[column].mode()
 
-    new_df = df.copy()
+            if not mode.empty:
+                result[column] = result[column].fillna(mode.iloc[0])
 
-    # Loop through every column
-    for column in new_df.columns:
-
-        # Check if column contains missing values
-        if new_df[column].isnull().sum() > 0:
-
-            # Get most frequent value
-            mode_value = new_df[column].mode()
-
-            # Fill missing values if mode exists
-            if not mode_value.empty:
-                new_df[column] = new_df[column].fillna(mode_value[0])
-
-    return new_df
+    return result
 
 
-# =======================================================
-# 5. Drop Rows Containing Missing Values
-# =======================================================
+def fill_constants(df, value="Unknown"):
+    return df.fillna(value)
+
 
 def drop_missing(df):
-    """
-    Remove all rows that contain at least one missing value.
-    """
-
     return df.dropna()
 
 
-# =======================================================
-# 6. Forward Fill
-# =======================================================
-
 def forward_fill(df):
-    """
-    Replace missing values using previous row value.
-
-    Example
-
-    20
-    NaN
-    NaN
-    30
-
-    becomes
-
-    20
-    20
-    20
-    30
-    """
-
     return df.ffill()
 
 
-# =======================================================
-# 7. Backward Fill
-# =======================================================
-
 def backward_fill(df):
-    """
-    Replace missing values using next row value.
-
-    Example
-
-    20
-    NaN
-    NaN
-    30
-
-    becomes
-
-    20
-    30
-    30
-    30
-    """
-
     return df.bfill()
 
 
-# =======================================================
-# 8. Drop Columns Having Too Many Missing Values
-# =======================================================
-
 def drop_columns_by_missing(df, threshold=40):
-    """
-    Remove columns whose missing percentage
-    is greater than the threshold.
+    missing_percent = (df.isnull().sum() / len(df)) * 100
 
-    Example
-
-    Threshold = 40%
-
-    Age = 20%
-    Cabin = 77%
-
-    Cabin will be removed.
-    """
-
-    # Calculate missing percentage
-    missing_percentage = (df.isnull().sum() / len(df)) * 100
-
-    print("=" * 50)
-    print("Missing Percentage of Each Column")
-    print("=" * 50)
-    print(missing_percentage)
-
-    # Find columns above threshold
-    columns_to_drop = missing_percentage[
-        missing_percentage > threshold
+    columns_to_drop = missing_percent[
+        missing_percent > threshold
     ].index
 
-    print("\nColumns Removed:")
-    print(list(columns_to_drop))
-
-    # Remove columns
-    cleaned_df = df.drop(columns=columns_to_drop)
-
-    return cleaned_df
+    return df.drop(columns=columns_to_drop)
 
 
-# =======================================================
-# 9. Complete Missing Value Cleaning Pipeline
-# =======================================================
-
-def clean_missing_values(df, threshold=40, numeric_method="mean"):
+def clean_missing_values(
+    df,
+    threshold=40,
+    numeric_method="mean",
+    categorical_method="mode",
+    fill_value="Unknown"
+):
     """
-    Complete missing value cleaning process.
-
-    Steps:
-    ------
-    Step 1 -> Remove columns with too many missing values.
-
-    Step 2 -> Fill numeric columns
-              Mean OR Median.
-
-    Step 3 -> Fill text columns using Mode.
-
-    Returns
-    -------
-    Cleaned DataFrame
-    """
-
-    # -----------------------------
-    # Step 1
-    # Remove columns having too many NaN values
-    # -----------------------------
-    cleaned_df = drop_columns_by_missing(df, threshold)
-
-    # -----------------------------
-    # Step 2
-    # Fill numeric values
-    # -----------------------------
-    if numeric_method.lower() == "mean":
-        cleaned_df = fill_mean(cleaned_df)
-
-    elif numeric_method.lower() == "median":
-        cleaned_df = fill_median(cleaned_df)
-
-    # -----------------------------
-    # Step 3
-    # Fill categorical columns
-    # -----------------------------
-    cleaned_df = fill_mode(cleaned_df)
-
-    return cleaned_df
-# ----------------------------------------------------------
-# 10. Fill Missing Values with a Constant Value
-# ----------------------------------------------------------
-
-def fill_constant(df, value="Unknown"):
-    """
-    Fill all missing values with a constant value.
+    Main missing-value cleaning function.
 
     Parameters
     ----------
     df : pandas.DataFrame
-        Input DataFrame.
+        Input dataset.
 
-    value : str or int or float
-        Value used to replace missing values.
+    threshold : int or float
+        Columns with missing values greater than this
+        percentage will be removed.
+
+    numeric_method : str
+        Method for numeric columns:
+        "mean", "median", or "constant".
+
+    categorical_method : str
+        Method for text/categorical columns:
+        "mode" or "constant".
+
+    fill_value : any
+        Value used when constant filling is selected.
 
     Returns
     -------
     pandas.DataFrame
-        DataFrame after filling missing values.
+        Cleaned DataFrame.
     """
 
-    # Create a copy so the original DataFrame is not modified
     cleaned_df = df.copy()
 
-    # Replace common missing value representations with Pandas NA
-    cleaned_df = cleaned_df.replace(
-        [
-            "N/A",
-            "n/a",
-            "?",
-            "-",
-            "Unknown",
-            "unknown",
-            "",
-            " "
-        ],
-        pd.NA
+    # --------------------------------------------------
+    # Step 1: Remove columns with too many missing values
+    # --------------------------------------------------
+
+    missing_percent = (
+        cleaned_df.isnull().sum() / len(cleaned_df)
+    ) * 100
+
+    columns_to_drop = missing_percent[
+        missing_percent > threshold
+    ].index
+
+    cleaned_df = cleaned_df.drop(
+        columns=columns_to_drop
     )
 
-    # Fill all missing values
-    cleaned_df = cleaned_df.fillna(value)
+    # --------------------------------------------------
+    # Step 2: Handle numeric columns
+    # --------------------------------------------------
+
+    numeric_columns = cleaned_df.select_dtypes(
+        include="number"
+    ).columns
+
+    if numeric_method == "mean":
+
+        cleaned_df[numeric_columns] = (
+            cleaned_df[numeric_columns]
+            .fillna(
+                cleaned_df[numeric_columns].mean()
+            )
+        )
+
+    elif numeric_method == "median":
+
+        cleaned_df[numeric_columns] = (
+            cleaned_df[numeric_columns]
+            .fillna(
+                cleaned_df[numeric_columns].median()
+            )
+        )
+
+    elif numeric_method == "constant":
+
+        cleaned_df[numeric_columns] = (
+            cleaned_df[numeric_columns]
+            .fillna(fill_value)
+        )
+
+    else:
+        raise ValueError(
+            "numeric_method must be "
+            "'mean', 'median', or 'constant'"
+        )
+
+    # --------------------------------------------------
+    # Step 3: Handle categorical/text columns
+    # --------------------------------------------------
+
+    categorical_columns = cleaned_df.select_dtypes(
+        exclude="number"
+    ).columns
+
+    if categorical_method == "mode":
+
+        for column in categorical_columns:
+
+            if cleaned_df[column].isnull().any():
+
+                mode = cleaned_df[column].mode()
+
+                if not mode.empty:
+                    cleaned_df[column] = (
+                        cleaned_df[column]
+                        .fillna(mode.iloc[0])
+                    )
+
+    elif categorical_method == "constant":
+
+        cleaned_df[categorical_columns] = (
+            cleaned_df[categorical_columns]
+            .fillna(fill_value)
+        )
+
+    else:
+        raise ValueError(
+            "categorical_method must be "
+            "'mode' or 'constant'"
+        )
 
     return cleaned_df

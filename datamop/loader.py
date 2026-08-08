@@ -3,36 +3,34 @@
 loader.py
 =========================================================
 
-Purpose:
---------
-This module is responsible for loading datasets into
-the DataMop project.
+DataMop Data Loading Module
 
-Supported file types:
-1. CSV
-2. Excel (.xlsx)
-3. JSON
+This module loads different types of data files and
+automatically detects the file type.
 
-Author : Rahul
-Project: DataMop
-=========================================================
+Supported inputs:
+    1. CSV
+    2. Excel (.xlsx / .xls)
+    3. JSON
+    4. Pandas DataFrame
 """
 
-# -------------------------------------------------------
-# Import Required Library
-# -------------------------------------------------------
+# =========================================================
+# IMPORT LIBRARIES
+# =========================================================
 
 import os
+import json
 import pandas as pd
 
 
-# =======================================================
-# 1. Load CSV File
-# =======================================================
+# =========================================================
+# 1. LOAD CSV FILE
+# =========================================================
 
 def load_csv(file_path):
     """
-    Load a CSV file.
+    Load a CSV file into a Pandas DataFrame.
 
     Parameters
     ----------
@@ -42,151 +40,175 @@ def load_csv(file_path):
     Returns
     -------
     pandas.DataFrame
+        Loaded dataset.
     """
 
-    # Check whether the file exists
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    # Read CSV file
-    df = pd.read_csv(file_path)
-
-    return df
+    return pd.read_csv(file_path)
 
 
-# =======================================================
-# 2. Load Excel File
-# =======================================================
+# =========================================================
+# 2. LOAD EXCEL FILE
+# =========================================================
 
 def load_excel(file_path):
     """
-    Load an Excel (.xlsx) file.
-    """
+    Load an Excel file into a Pandas DataFrame.
 
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    df = pd.read_excel(file_path)
-
-    return df
-
-
-# =======================================================
-# 3. Load JSON File
-# =======================================================
-
-def load_json(file_path):
-    """
-    Load a JSON file.
-    """
-
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: {file_path}")
-
-    df = pd.read_json(file_path)
-
-    return df
-
-
-# =======================================================
-# 4. Display Dataset Information
-# =======================================================
-
-def dataset_info(df):
-    """
-    Display dataset information.
-    """
-
-    print("=" * 50)
-    print("DATASET INFORMATION")
-    print("=" * 50)
-
-    print(df.info())
-
-
-# =======================================================
-# 5. Display Dataset Shape
-# =======================================================
-
-def dataset_shape(df):
-    """
-    Print number of rows and columns.
-    """
-
-    rows, columns = df.shape
-
-    print("=" * 50)
-    print("DATASET SHAPE")
-    print("=" * 50)
-
-    print("Rows    :", rows)
-    print("Columns :", columns)
-
-
-# =======================================================
-# 6. Display Column Names
-# =======================================================
-
-def column_names(df):
-    """
-    Print all column names.
-    """
-
-    print("=" * 50)
-    print("COLUMN NAMES")
-    print("=" * 50)
-
-    for column in df.columns:
-        print(column)
-
-
-# =======================================================
-# 7. Display Data Types
-# =======================================================
-
-def data_types(df):
-    """
-    Print datatype of every column.
-    """
-
-    print("=" * 50)
-    print("DATA TYPES")
-    print("=" * 50)
-
-    print(df.dtypes)
-
-
-# =======================================================
-# 8. Display Basic Statistics
-# =======================================================
-
-def summary_statistics(df):
-    """
-    Display statistical summary.
-    """
-
-    print("=" * 50)
-    print("SUMMARY STATISTICS")
-    print("=" * 50)
-
-    print(df.describe(include="all"))
-# ----------------------------------------------------------
-# 9.Load Existing DataFrame
-# ----------------------------------------------------------
-
-def load_dataframe(df):
-    """
-    Return a copy of an existing Pandas DataFrame.
+    Supports:
+        .xlsx
+        .xls
 
     Parameters
     ----------
-    df : pandas.DataFrame
-        Input DataFrame.
+    file_path : str
+        Path of the Excel file.
 
     Returns
     -------
     pandas.DataFrame
-        Copy of the DataFrame.
+        Loaded dataset.
     """
 
-    return df.copy()
+    return pd.read_excel(file_path)
+
+
+# =========================================================
+# 3. LOAD JSON FILE
+# =========================================================
+
+def load_json(file_path):
+    """
+    Load a JSON file into a Pandas DataFrame.
+
+    The JSON file is first read using Python's json
+    module and then converted into a DataFrame.
+    """
+
+    # Open JSON file
+    with open(file_path, "r", encoding="utf-8") as file:
+
+        data = json.load(file)
+
+    # -----------------------------------------------------
+    # JSON contains a list of records
+    # -----------------------------------------------------
+
+    if isinstance(data, list):
+
+        return pd.DataFrame(data)
+
+    # -----------------------------------------------------
+    # JSON contains a dictionary
+    # -----------------------------------------------------
+
+    elif isinstance(data, dict):
+
+        try:
+
+            return pd.DataFrame(data)
+
+        except ValueError:
+
+            return pd.json_normalize(data)
+
+    # -----------------------------------------------------
+    # Unsupported JSON structure
+    # -----------------------------------------------------
+
+    else:
+
+        raise ValueError(
+            "JSON structure cannot be converted to DataFrame."
+        )
+
+
+# =========================================================
+# 4. AUTOMATIC FILE LOADER
+# =========================================================
+
+def load_file(source):
+    """
+    Automatically detect the input type and load it.
+
+    Supported:
+        CSV
+        Excel
+        JSON
+        Pandas DataFrame
+
+    Parameters
+    ----------
+    source : str or pandas.DataFrame
+        File path or existing DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Loaded dataset.
+    """
+
+    # -----------------------------------------------------
+    # CASE 1: Input is already a DataFrame
+    # -----------------------------------------------------
+
+    if isinstance(source, pd.DataFrame):
+
+        print("Detected input type: Pandas DataFrame")
+
+        return source
+
+    # -----------------------------------------------------
+    # CASE 2: Check whether file exists
+    # -----------------------------------------------------
+
+    if not os.path.exists(source):
+
+        raise FileNotFoundError(
+            f"File not found: {source}"
+        )
+
+    # -----------------------------------------------------
+    # Get file extension
+    # -----------------------------------------------------
+
+    extension = os.path.splitext(source)[1].lower()
+
+    # -----------------------------------------------------
+    # CASE 3: CSV
+    # -----------------------------------------------------
+
+    if extension == ".csv":
+
+        print("Detected file type: CSV")
+
+        return load_csv(source)
+
+    # -----------------------------------------------------
+    # CASE 4: Excel
+    # -----------------------------------------------------
+
+    elif extension in [".xlsx", ".xls"]:
+
+        print("Detected file type: Excel")
+
+        return load_excel(source)
+
+    # -----------------------------------------------------
+    # CASE 5: JSON
+    # -----------------------------------------------------
+
+    elif extension == ".json":
+
+        print("Detected file type: JSON")
+
+        return load_json(source)
+
+    # -----------------------------------------------------
+    # CASE 6: Unsupported file
+    # -----------------------------------------------------
+
+    else:
+
+        raise ValueError(
+            f"Unsupported file type: {extension}"
+        )
