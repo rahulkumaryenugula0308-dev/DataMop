@@ -1,0 +1,6 @@
+timestamp,module,operation,description,rows_affected,columns_affected,status
+2026-08-18 13:56:27,LOADER,LOAD_DATASET,Titanic dataset loaded successfully.,891,12,SUCCESS
+2026-08-18 13:56:27,MISSING_VALUES,FILL_MISSING_VALUES,Filled missing numerical values using median.,177,1,SUCCESS
+2026-08-18 13:56:27,DUPLICATES,REMOVE_DUPLICATES,Removed duplicate records.,5,0,SUCCESS
+2026-08-18 13:56:27,OUTLIERS,REMOVE_IQR_OUTLIERS,Removed IQR-based numerical outliers.,8,2,SUCCESS
+2026-08-18 13:56:27,DATATYPE,CONVERT_DATATYPE,Converted Age column from object to numeric.,891,1,SUCCESS

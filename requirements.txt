@@ -1,7 +1,6 @@
 pandas
 numpy
-openpyxl
-pytest
 matplotlib
 seaborn
-scikit-learn
+openpyxl
+pytest

@@ -1,117 +1,434 @@
 """
-duplicates.py
+DataMop - Duplicate Handler
 
-Functions for finding and removing duplicate records.
+This module detects, analyzes, and removes duplicate
+records from pandas DataFrames.
 """
 
 import pandas as pd
-from difflib import SequenceMatcher
 
 
-def find_duplicates(df):
+class DuplicateHandler:
     """
-    Return duplicate rows.
-
-    Parameters
-    ----------
-    df : pandas.DataFrame
-
-    Returns
-    -------
-    pandas.DataFrame
+    Class for detecting and handling duplicate rows.
     """
 
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Input must be a pandas DataFrame.")
+    def __init__(self, dataframe=None):
+        """
+        Initialize DuplicateHandler.
 
-    return df[df.duplicated()]
+        Parameters
+        ----------
+        dataframe : pandas.DataFrame, optional
+            Dataset to process.
+        """
 
+        self.df = dataframe
+        self.logs = []
 
-def drop_duplicates(df):
-    """
-    Remove duplicate rows.
+    # ==================================================
+    # Set Data
+    # ==================================================
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
+    def set_data(self, dataframe):
+        """
+        Set the DataFrame for duplicate processing.
+        """
 
-    Returns
-    -------
-    pandas.DataFrame
-    """
+        if not isinstance(dataframe, pd.DataFrame):
+            raise TypeError(
+                "Input must be a pandas DataFrame."
+            )
 
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Input must be a pandas DataFrame.")
+        self.df = dataframe
 
-    return df.drop_duplicates()
+        return self.df
 
+    # ==================================================
+    # Check Data
+    # ==================================================
 
-def find_near_duplicates(df, threshold=0.90):
-    """
-    Find near duplicate rows using similarity matching.
+    def _check_data(self):
+        """
+        Check whether a DataFrame is available.
+        """
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
-    threshold : float
+        if self.df is None:
+            raise ValueError(
+                "No dataset available. "
+                "Set or load a dataset first."
+            )
 
-    Returns
-    -------
-    list
-    """
+    # ==================================================
+    # Count Duplicates
+    # ==================================================
 
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Input must be a pandas DataFrame.")
+    def count_duplicates(self, subset=None):
+        """
+        Count duplicate rows.
 
-    rows = df.astype(str).agg(" ".join, axis=1)
+        Parameters
+        ----------
+        subset : list, optional
+            Columns to consider when identifying duplicates.
 
-    similar = []
+        Returns
+        -------
+        int
+            Number of duplicate rows.
+        """
 
-    for i in range(len(rows)):
-        for j in range(i + 1, len(rows)):
+        self._check_data()
 
-            score = SequenceMatcher(
-                None,
-                rows.iloc[i],
-                rows.iloc[j]
-            ).ratio()
+        return int(
+            self.df.duplicated(
+                subset=subset,
+                keep="first"
+            ).sum()
+        )
 
-            if score >= threshold:
-                similar.append({
-                    "Row1": i,
-                    "Row2": j,
-                    "Similarity": round(score, 2)
-                })
+    # ==================================================
+    # Duplicate Percentage
+    # ==================================================
 
-    return similar
+    def duplicate_percentage(self, subset=None):
+        """
+        Calculate percentage of duplicate rows.
+        """
 
+        self._check_data()
 
-def duplicate_summary(df):
-    """
-    Return duplicate statistics.
+        if len(self.df) == 0:
+            return 0.0
 
-    Parameters
-    ----------
-    df : pandas.DataFrame
+        duplicate_count = self.count_duplicates(
+            subset=subset
+        )
 
-    Returns
-    -------
-    dict
-    """
+        percentage = (
+            duplicate_count / len(self.df)
+        ) * 100
 
-    if not isinstance(df, pd.DataFrame):
-        raise TypeError("Input must be a pandas DataFrame.")
+        return round(percentage, 2)
 
-    duplicates = int(df.duplicated().sum())
+    # ==================================================
+    # Detect Duplicates
+    # ==================================================
 
-    summary = {
-        "Total Rows": len(df),
-        "Duplicate Rows": duplicates,
-        "Unique Rows": len(df) - duplicates,
-        "Duplicate Percentage": round(
-            (duplicates / len(df)) * 100,
-            2
-        ) if len(df) > 0 else 0
-    }
+    def detect(self, subset=None):
+        """
+        Return a boolean Series identifying duplicate rows.
+        """
 
-    return summary
+        self._check_data()
+
+        return self.df.duplicated(
+            subset=subset,
+            keep="first"
+        )
+
+    # ==================================================
+    # Get Duplicate Rows
+    # ==================================================
+
+    def get_duplicates(self, subset=None):
+        """
+        Return duplicate rows.
+
+        The first occurrence is considered valid,
+        and subsequent occurrences are returned.
+        """
+
+        self._check_data()
+
+        duplicate_mask = self.df.duplicated(
+            subset=subset,
+            keep="first"
+        )
+
+        return self.df[duplicate_mask].copy()
+
+    # ==================================================
+    # Get All Duplicate Groups
+    # ==================================================
+
+    def get_all_duplicate_records(self, subset=None):
+        """
+        Return all records that belong to duplicate groups.
+
+        Unlike get_duplicates(), this also includes
+        the first occurrence.
+        """
+
+        self._check_data()
+
+        duplicate_mask = self.df.duplicated(
+            subset=subset,
+            keep=False
+        )
+
+        return self.df[duplicate_mask].copy()
+
+    # ==================================================
+    # Remove Duplicates
+    # ==================================================
+
+    def remove_duplicates(
+        self,
+        subset=None,
+        keep="first"
+    ):
+        """
+        Remove duplicate rows.
+
+        Parameters
+        ----------
+        subset : list, optional
+            Columns used to identify duplicates.
+
+        keep : str
+            'first', 'last', or False.
+
+        Returns
+        -------
+        pandas.DataFrame
+            Cleaned DataFrame.
+        """
+
+        self._check_data()
+
+        if keep not in ["first", "last", False]:
+            raise ValueError(
+                "keep must be 'first', 'last', or False."
+            )
+
+        before = len(self.df)
+
+        duplicate_count = self.count_duplicates(
+            subset=subset
+        )
+
+        self.df = self.df.drop_duplicates(
+            subset=subset,
+            keep=keep
+        ).reset_index(drop=True)
+
+        after = len(self.df)
+
+        removed = before - after
+
+        self.logs.append(
+            f"Removed {removed} duplicate rows "
+            f"using keep='{keep}'."
+        )
+
+        return self.df
+
+    # ==================================================
+    # Remove Duplicates by Columns
+    # ==================================================
+
+    def remove_duplicates_by_columns(
+        self,
+        columns,
+        keep="first"
+    ):
+        """
+        Remove duplicates based on selected columns.
+
+        Example:
+            remove_duplicates_by_columns(
+                ["Name", "Age"]
+            )
+        """
+
+        self._check_data()
+
+        if not columns:
+            raise ValueError(
+                "At least one column must be provided."
+            )
+
+        missing_columns = [
+            column
+            for column in columns
+            if column not in self.df.columns
+        ]
+
+        if missing_columns:
+            raise ValueError(
+                f"Columns not found: {missing_columns}"
+            )
+
+        before = len(self.df)
+
+        self.df = self.df.drop_duplicates(
+            subset=columns,
+            keep=keep
+        ).reset_index(drop=True)
+
+        removed = before - len(self.df)
+
+        self.logs.append(
+            f"Removed {removed} duplicates based on "
+            f"columns: {columns}."
+        )
+
+        return self.df
+
+    # ==================================================
+    # Remove All Duplicate Records
+    # ==================================================
+
+    def remove_all_duplicate_records(
+        self,
+        subset=None
+    ):
+        """
+        Remove every record belonging to a duplicate group.
+
+        Example:
+
+        A
+        A
+        B
+
+        becomes:
+
+        B
+        """
+
+        self._check_data()
+
+        before = len(self.df)
+
+        duplicate_mask = self.df.duplicated(
+            subset=subset,
+            keep=False
+        )
+
+        duplicate_count = int(
+            duplicate_mask.sum()
+        )
+
+        self.df = self.df[
+            ~duplicate_mask
+        ].reset_index(drop=True)
+
+        self.logs.append(
+            f"Removed {duplicate_count} rows belonging "
+            f"to duplicate groups."
+        )
+
+        return self.df
+
+    # ==================================================
+    # Display Report
+    # ==================================================
+
+    def display_report(self, subset=None):
+        """
+        Display duplicate information.
+        """
+
+        self._check_data()
+
+        total_rows = len(self.df)
+
+        duplicate_count = self.count_duplicates(
+            subset=subset
+        )
+
+        percentage = self.duplicate_percentage(
+            subset=subset
+        )
+
+        print("\n")
+        print("=" * 70)
+        print("                 DATAMOP DUPLICATE REPORT")
+        print("=" * 70)
+
+        print(
+            f"\nTotal Rows          : {total_rows}"
+        )
+
+        print(
+            f"Duplicate Rows      : {duplicate_count}"
+        )
+
+        print(
+            f"Duplicate Percentage : {percentage}%"
+        )
+
+        print("\n" + "=" * 70)
+
+    # ==================================================
+    # Display Duplicate Rows
+    # ==================================================
+
+    def display_duplicates(self, subset=None):
+        """
+        Display duplicate records.
+        """
+
+        self._check_data()
+
+        duplicates = self.get_duplicates(
+            subset=subset
+        )
+
+        print("\n")
+        print("=" * 70)
+        print("                 DUPLICATE RECORDS")
+        print("=" * 70)
+
+        if duplicates.empty:
+
+            print("No duplicate rows found.")
+
+        else:
+
+            print(
+                duplicates.to_string(
+                    index=False
+                )
+            )
+
+        print("=" * 70)
+
+    # ==================================================
+    # Cleaning Log
+    # ==================================================
+
+    def get_log(self):
+        """
+        Return duplicate handling log.
+        """
+
+        return self.logs
+
+    def display_log(self):
+        """
+        Display duplicate handling operations.
+        """
+
+        print("\n")
+        print("=" * 70)
+        print("                 DUPLICATE CLEANING LOG")
+        print("=" * 70)
+
+        if not self.logs:
+
+            print("No operations performed.")
+
+        else:
+
+            for number, log in enumerate(
+                self.logs,
+                start=1
+            ):
+                print(
+                    f"{number}. {log}"
+                )
+
+        print("=" * 70)

@@ -1,0 +1,6 @@
+timestamp,module,operation,description,rows_affected,columns_affected,status
+2026-08-18 13:56:23,LOADER,LOAD_DATASET,Dataset loaded successfully from datasets/Titanic-Dataset.csv.,891,12,SUCCESS
+2026-08-18 13:56:23,DATATYPE,AUTO_CONVERT,Automatic data type conversion completed.,0,0,SUCCESS
+2026-08-18 13:56:23,MISSING_VALUES,HANDLE_MISSING_VALUES,Missing values handled successfully.,866,0,SUCCESS
+2026-08-18 13:56:23,DUPLICATES,REMOVE_DUPLICATES,Duplicate rows removed successfully.,0,0,SUCCESS
+2026-08-18 13:56:27,SAVER,SAVE_DATASET,Cleaned dataset saved to datamop_output\cleaned_data\Titanic-Dataset_cleaned.csv.,891,12,SUCCESS
