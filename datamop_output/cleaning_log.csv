@@ -1,5 +1,6 @@
 timestamp,module,operation,description,rows_affected,columns_affected,status
-2026-08-21 11:47:17,DATATYPE,AUTO_CONVERT,Automatic data type conversion completed.,0,0,SUCCESS
-2026-08-21 11:47:17,MISSING_VALUES,HANDLE_MISSING_VALUES,Missing values handled successfully.,0,0,SUCCESS
-2026-08-21 11:47:17,DUPLICATES,REMOVE_DUPLICATES,Duplicate rows removed successfully.,0,0,SUCCESS
-2026-08-21 11:47:17,SAVER,SAVE_DATASET,Cleaned dataset saved to datamop_output\cleaned_data\dataframe_cleaned.csv.,3,3,SUCCESS
+2026-08-21 12:53:38,LOADER,LOAD_DATASET,Dataset loaded successfully from datasets\Titanic-Dataset.csv.,891,12,SUCCESS
+2026-08-21 12:53:39,DATATYPE,AUTO_CONVERT,Automatic data type conversion completed.,0,0,SUCCESS
+2026-08-21 12:53:39,MISSING_VALUES,HANDLE_MISSING_VALUES,Missing values handled successfully.,866,0,SUCCESS
+2026-08-21 12:53:39,DUPLICATES,REMOVE_DUPLICATES,Duplicate rows removed successfully.,0,0,SUCCESS
+2026-08-21 12:53:42,SAVER,SAVE_DATASET,Cleaned dataset saved to datamop_output\cleaned_data\Titanic-Dataset_cleaned.csv.,891,12,SUCCESS
