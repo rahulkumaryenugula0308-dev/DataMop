@@ -1,6 +1,0 @@
-timestamp,module,operation,description,rows_affected,columns_affected,status
-2026-09-25 22:48:30,DATATYPE,AUTO_CONVERT,Automatic data type conversion completed.,0,0,SUCCESS
-2026-09-25 22:48:30,TEXT_STANDARDIZATION,STANDARDIZE_TEXT,"Text whitespace, case and category standardization completed.",0,4,SUCCESS
-2026-09-25 22:48:30,MISSING_VALUES,HANDLE_MISSING_VALUES,Missing values handled successfully. Columns with more than 40% missing values were removed.,5,0,SUCCESS
-2026-09-25 22:48:30,DUPLICATES,REMOVE_DUPLICATES,Duplicate rows removed successfully.,1,0,SUCCESS
-2026-09-25 22:48:34,SAVER,SAVE_DATASET,Cleaned dataset saved to datamop_output\cleaned_data\dataframe_cleaned.csv.,15,7,SUCCESS
