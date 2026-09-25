@@ -35,6 +35,10 @@ dev = [
     "pytest"
 ]
 
+web = [
+    "streamlit"
+]
+
 
 [tool.setuptools.packages.find]
 include = [

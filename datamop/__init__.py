@@ -1,39 +1,32 @@
 """
 DataMop
-=======
+-------
 
-Automatic data analysis, cleaning,
-visualization and reporting library.
+Automatic data cleaning, analysis, visualization
+and reporting library.
 """
-import os
-import pandas as pd
 
 from datamop.pipeline import DataMopPipeline
 from datamop.visualization import DataVisualizer
 
+
 __version__ = "0.2.0"
 
 
-# ======================================================
-# ANALYZE
-# ======================================================
+# ==================================================
+# Analyze
+# ==================================================
 
 def analyze(
     data,
     output_dir="datamop_output"
 ):
     """
-    Analyze a dataset without modifying it.
+    Analyze a CSV, Excel file, or pandas DataFrame.
 
-    Parameters
-    ----------
-    data : str or pandas.DataFrame
-        CSV/Excel path or DataFrame.
-
-    Returns
-    -------
-    dict
-        Analysis results.
+    Returns a dictionary containing:
+    - analysis
+    - dataframe
     """
 
     pipeline = DataMopPipeline(
@@ -42,22 +35,19 @@ def analyze(
 
     pipeline._load_input(data)
 
-    result = (
-        pipeline.cleaner.analyze()
-    )
+    analysis_result = pipeline.cleaner.analyze()
 
-    return {
-        "dataframe":
-            pipeline.cleaner.get_dataframe(),
-
-        "analysis":
-            result
+    result = {
+        "analysis": analysis_result,
+        "dataframe": pipeline.cleaner.get_dataframe()
     }
 
+    return result
 
-# ======================================================
-# CLEAN
-# ======================================================
+
+# ==================================================
+# Clean
+# ==================================================
 
 def clean(
     data,
@@ -66,102 +56,103 @@ def clean(
     remove_outliers=False,
     convert_datatypes=True,
     outlier_method="iqr",
+    missing_threshold=40,
+    standardize_text=True,
+    text_case="lower",
+    normalize_categories=True,
     output_dir="datamop_output"
 ):
     """
-    Clean a dataset automatically.
+    Clean a CSV, Excel file, or pandas DataFrame.
 
-    Returns cleaned DataFrame and output files.
+    Parameters
+    ----------
+    data : str or pandas.DataFrame
+        Input dataset.
+
+    remove_duplicates : bool
+        Remove duplicate rows.
+
+    handle_missing : bool
+        Handle missing values.
+
+    remove_outliers : bool
+        Remove numerical outliers.
+
+    convert_datatypes : bool
+        Automatically convert data types.
+
+    outlier_method : str
+        'iqr' or 'zscore'.
+
+    missing_threshold : float
+        Columns with missing values greater than
+        this percentage are removed.
+
+    standardize_text : bool
+        Standardize text and categorical values.
+
+    text_case : str
+        'lower', 'upper', or 'title'.
+
+    normalize_categories : bool
+        Normalize category labels.
+
+    output_dir : str
+        Directory for DataMop outputs.
+
+    Returns
+    -------
+    dict
+        DataMop processing result.
     """
 
     pipeline = DataMopPipeline(
         output_dir=output_dir
     )
 
-    pipeline._load_input(data)
-
-    pipeline.cleaner.clean(
-        remove_duplicates=(
-            remove_duplicates
-        ),
-        handle_missing=(
-            handle_missing
-        ),
-        remove_outliers=(
-            remove_outliers
-        ),
-        convert_datatypes=(
-            convert_datatypes
-        ),
-        outlier_method=(
-            outlier_method
-        )
+    result = pipeline.run(
+        data=data,
+        remove_duplicates=remove_duplicates,
+        handle_missing=handle_missing,
+        remove_outliers=remove_outliers,
+        convert_datatypes=convert_datatypes,
+        outlier_method=outlier_method,
+        missing_threshold=missing_threshold,
+        standardize_text=standardize_text,
+        text_case=text_case,
+        normalize_categories=normalize_categories
     )
 
-    cleaned_df = (
-        pipeline.cleaner.get_dataframe()
-    )
+    # Backward compatibility
+    result["dataframe"] = result["cleaned_dataframe"]
 
-    return {
-        "dataframe":
-            cleaned_df,
-
-        "cleaning_log":
-            pipeline.cleaner.get_cleaning_log()
-    }
+    return result
 
 
-# ======================================================
-# VISUALIZE
-# ======================================================
+# ==================================================
+# Visualize
+# ==================================================
 
 def visualize(
     data,
     output_dir="datamop_output"
 ):
     """
-    Automatically generate visualizations.
+    Generate visualizations for a dataset.
     """
 
-    pipeline = DataMopPipeline(
+    visualizer = DataVisualizer(
+        data,
         output_dir=output_dir
     )
 
-    dataset_name = (
-        pipeline._load_input(data)
-    )
-
-    dataframe = (
-        pipeline.cleaner.get_dataframe()
-    )
-
-    visualization_dir = os.path.join(
-        output_dir,
-        "visualizations",
-        dataset_name
-    )
-
-    visualizer = DataVisualizer(
-        dataframe,
-        output_dir=visualization_dir
-    )
-
-    files = (
-        visualizer.generate_all()
-    )
-
-    return {
-        "dataframe":
-            dataframe,
-
-        "visualizations":
-            files
-    }
+    return visualizer.generate_all()
 
 
-# ======================================================
-# AUTO CLEAN
-# ======================================================
+# ==================================================
+# Auto Clean
+# ==================================================
 
 def auto_clean(
     data,
@@ -170,45 +161,40 @@ def auto_clean(
     remove_outliers=False,
     convert_datatypes=True,
     outlier_method="iqr",
+    missing_threshold=40,
+    standardize_text=True,
+    text_case="lower",
+    normalize_categories=True,
     output_dir="datamop_output"
 ):
     """
-    Run the complete DataMop pipeline.
-
-    Workflow:
-
-        Load
-        ↓
-        Analyze
-        ↓
-        Clean
-        ↓
-        Visualize
-        ↓
-        Save
-        ↓
-        Report
+    Automatically clean and process a dataset.
     """
 
-    pipeline = DataMopPipeline(
+    return clean(
+        data=data,
+        remove_duplicates=remove_duplicates,
+        handle_missing=handle_missing,
+        remove_outliers=remove_outliers,
+        convert_datatypes=convert_datatypes,
+        outlier_method=outlier_method,
+        missing_threshold=missing_threshold,
+        standardize_text=standardize_text,
+        text_case=text_case,
+        normalize_categories=normalize_categories,
         output_dir=output_dir
     )
 
-    return pipeline.run(
-        data=data,
-        remove_duplicates=(
-            remove_duplicates
-        ),
-        handle_missing=(
-            handle_missing
-        ),
-        remove_outliers=(
-            remove_outliers
-        ),
-        convert_datatypes=(
-            convert_datatypes
-        ),
-        outlier_method=(
-            outlier_method
-        )
-    )
+
+# ==================================================
+# Public API
+# ==================================================
+
+__all__ = [
+    "DataMopPipeline",
+    "DataVisualizer",
+    "analyze",
+    "clean",
+    "visualize",
+    "auto_clean"
+]

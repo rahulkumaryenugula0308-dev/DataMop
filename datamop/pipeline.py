@@ -14,6 +14,7 @@ from datamop.missing_values import MissingValueHandler
 from datamop.duplicates import DuplicateHandler
 from datamop.outliers import OutlierHandler
 from datamop.datatype import DataTypeHandler
+from datamop.text_standardization import TextStandardizer
 from datamop.visualization import DataVisualizer
 from datamop.report import DataReport
 from datamop.validation import DataValidator
@@ -70,7 +71,6 @@ class DataMopPipeline:
 
         self.result = None
 
-
     # ==================================================
     # Validate Input
     # ==================================================
@@ -123,7 +123,7 @@ class DataMopPipeline:
 
         if input_type == "dataframe":
 
-            # Make a copy so that DataMop never modifies
+            # Make a copy so DataMop never modifies
             # the user's original DataFrame directly.
             self.cleaner.df = data.copy()
 
@@ -161,27 +161,59 @@ class DataMopPipeline:
                 )
             )
 
+            # ----------------------------------------------
+            # Text Standardization Handler
+            # ----------------------------------------------
+
+            self.cleaner.text_standardizer = (
+                TextStandardizer(
+                    self.cleaner.df
+                )
+            )
+
             return "dataframe"
 
-        # ----------------------------------------------
-        # DataFrame
-        # ----------------------------------------------
+        # ==================================================
+        # FALLBACK DATAFRAME
+        # ==================================================
 
         self.cleaner.df = data.copy()
 
         self.cleaner.filepath = None
 
-        self.cleaner.analyzer = None
+        self.cleaner.analyzer = DataAnalyzer(
+            self.cleaner.df
+        )
 
-        self.cleaner.missing_handler = None
+        self.cleaner.missing_handler = (
+            MissingValueHandler(
+                self.cleaner.df
+            )
+        )
 
-        self.cleaner.duplicate_handler = None
+        self.cleaner.duplicate_handler = (
+            DuplicateHandler(
+                self.cleaner.df
+            )
+        )
 
-        self.cleaner.outlier_handler = None
+        self.cleaner.outlier_handler = (
+            OutlierHandler(
+                self.cleaner.df
+            )
+        )
 
-        self.cleaner.datatype_handler = None
+        self.cleaner.datatype_handler = (
+            DataTypeHandler(
+                self.cleaner.df
+            )
+        )
 
-        self.cleaner._sync_handlers()
+        self.cleaner.text_standardizer = (
+            TextStandardizer(
+                self.cleaner.df
+            )
+        )
 
         return "dataframe"
 
@@ -196,7 +228,11 @@ class DataMopPipeline:
         handle_missing=True,
         remove_outliers=False,
         convert_datatypes=True,
-        outlier_method="iqr"
+        outlier_method="iqr",
+        missing_threshold=40,
+        standardize_text=True,
+        text_case="lower",
+        normalize_categories=True
     ):
 
         print("\n")
@@ -250,6 +286,18 @@ class DataMopPipeline:
             ),
             outlier_method=(
                 outlier_method
+            ),
+            missing_threshold=(
+                missing_threshold
+            ),
+            standardize_text=(
+                standardize_text
+            ),
+            text_case=(
+                text_case
+            ),
+            normalize_categories=(
+                normalize_categories
             )
         )
 

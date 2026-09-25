@@ -13,6 +13,7 @@ from datamop.missing_values import MissingValueHandler
 from datamop.duplicates import DuplicateHandler
 from datamop.outliers import OutlierHandler
 from datamop.datatype import DataTypeHandler
+from datamop.text_standardization import TextStandardizer
 from datamop.logger import DataLogger
 
 
@@ -33,6 +34,7 @@ class DataCleaner:
         self.duplicate_handler = None
         self.outlier_handler = None
         self.datatype_handler = None
+        self.text_standardizer = None
 
         self.logger = DataLogger()
 
@@ -41,9 +43,7 @@ class DataCleaner:
     # ==================================================
 
     def load(self, filepath):
-        """
-        Load a CSV or Excel dataset.
-        """
+        """Load a CSV or Excel dataset."""
 
         self.df = self.loader.load(filepath)
         self.filepath = filepath
@@ -53,6 +53,7 @@ class DataCleaner:
         self.duplicate_handler = DuplicateHandler(self.df)
         self.outlier_handler = OutlierHandler(self.df)
         self.datatype_handler = DataTypeHandler(self.df)
+        self.text_standardizer = TextStandardizer(self.df)
 
         self.logger.success(
             module="LOADER",
@@ -71,58 +72,101 @@ class DataCleaner:
     # ==================================================
 
     def _sync_handlers(self):
-        """
-        Synchronize the current DataFrame with all handlers.
-        """
+        """Synchronize the current DataFrame with all handlers."""
 
         if self.df is None:
-            raise ValueError(
-                "No dataset loaded."
-            )
+            raise ValueError("No dataset loaded.")
 
         self.analyzer.set_data(self.df)
         self.missing_handler.set_data(self.df)
         self.duplicate_handler.set_data(self.df)
         self.outlier_handler.set_data(self.df)
         self.datatype_handler.set_data(self.df)
+        self.text_standardizer.set_data(self.df)
 
     # ==================================================
     # Analyze
     # ==================================================
 
     def analyze(self):
-        """
-        Analyze the current dataset.
-        """
+        """Analyze the current dataset."""
 
         if self.df is None:
-            raise ValueError(
-                "Please load a dataset first."
-            )
+            raise ValueError("Please load a dataset first.")
 
         self._sync_handlers()
 
-        result = self.analyzer.analyze()
-
-        return result
+        return self.analyzer.analyze()
 
     # ==================================================
     # Display Analysis
     # ==================================================
 
     def display_analysis(self):
+        """Display a complete analysis report."""
+
+        if self.df is None:
+            raise ValueError("Please load a dataset first.")
+
+        self._sync_handlers()
+        self.analyzer.display_report()
+
+    # ==================================================
+    # Text Standardization
+    # ==================================================
+
+    def standardize_text(
+        self,
+        columns=None,
+        case="lower",
+        normalize_categories=True
+    ):
         """
-        Display a complete analysis report.
+        Standardize text and categorical values.
+
+        Operations:
+        - Trim whitespace
+        - Standardize case
+        - Normalize category labels
         """
 
         if self.df is None:
-            raise ValueError(
-                "Please load a dataset first."
-            )
+            raise ValueError("Please load a dataset first.")
 
         self._sync_handlers()
 
-        self.analyzer.display_report()
+        before = self.df.copy()
+
+        self.text_standardizer.standardize(
+            columns=columns,
+            case=case,
+            normalize_categories=normalize_categories
+        )
+
+        self.df = self.text_standardizer.df
+
+        changed_columns = 0
+
+        for column in self.df.columns:
+            if column in before.columns:
+                if not before[column].astype("string").equals(
+                    self.df[column].astype("string")
+                ):
+                    changed_columns += 1
+
+        self.logger.success(
+            module="TEXT_STANDARDIZATION",
+            operation="STANDARDIZE_TEXT",
+            description=(
+                "Text whitespace, case and category "
+                "standardization completed."
+            ),
+            columns_affected=changed_columns
+        )
+
+        self._sync_handlers()
+
+        return self.df
 
     # ==================================================
     # Handle Missing Values
@@ -131,24 +175,32 @@ class DataCleaner:
     def handle_missing_values(
         self,
         numeric_strategy="median",
-        categorical_strategy="mode"
+        categorical_strategy="mode",
+        missing_threshold=40
     ):
         """
         Handle missing values.
 
-        Numerical columns:
-            median by default.
+        Columns with missing percentage greater than
+        missing_threshold are removed.
 
-        Categorical columns:
-            mode by default.
+        Remaining missing values are filled.
         """
 
         self._sync_handlers()
 
-        before_missing = (
-            self.df.isnull().sum().sum()
+        before_missing = self.df.isnull().sum().sum()
+
+        # Remove high-missing columns
+        self.missing_handler.drop_high_missing_columns(
+            missing_threshold=missing_threshold
         )
 
+        self.df = self.missing_handler.df
+
+        self._sync_handlers()
+
+        # Fill remaining missing values
         self.missing_handler.fill_numeric(
             strategy=numeric_strategy
         )
@@ -159,9 +211,7 @@ class DataCleaner:
 
         self.df = self.missing_handler.df
 
-        after_missing = (
-            self.df.isnull().sum().sum()
-        )
+        after_missing = self.df.isnull().sum().sum()
 
         handled = int(
             before_missing - after_missing
@@ -171,7 +221,10 @@ class DataCleaner:
             module="MISSING_VALUES",
             operation="HANDLE_MISSING_VALUES",
             description=(
-                "Missing values handled successfully."
+                f"Missing values handled successfully. "
+                f"Columns with more than "
+                f"{missing_threshold}% missing values "
+                f"were removed."
             ),
             rows_affected=handled
         )
@@ -189,9 +242,7 @@ class DataCleaner:
         subset=None,
         keep="first"
     ):
-        """
-        Remove duplicate rows.
-        """
+        """Remove duplicate rows."""
 
         self._sync_handlers()
 
@@ -228,9 +279,7 @@ class DataCleaner:
         columns=None,
         multiplier=1.5
     ):
-        """
-        Remove numerical outliers using IQR.
-        """
+        """Remove numerical outliers using IQR."""
 
         self._sync_handlers()
 
@@ -267,9 +316,7 @@ class DataCleaner:
         columns=None,
         threshold=3
     ):
-        """
-        Remove numerical outliers using Z-score.
-        """
+        """Remove numerical outliers using Z-score."""
 
         self._sync_handlers()
 
@@ -302,10 +349,7 @@ class DataCleaner:
     # ==================================================
 
     def auto_convert_datatypes(self):
-        """
-        Automatically detect and convert obvious
-        data types.
-        """
+        """Automatically detect and convert obvious data types."""
 
         self._sync_handlers()
 
@@ -351,32 +395,34 @@ class DataCleaner:
         handle_missing=True,
         remove_outliers=False,
         convert_datatypes=True,
-        outlier_method="iqr"
+        outlier_method="iqr",
+        missing_threshold=40,
+        standardize_text=True,
+        text_case="lower",
+        normalize_categories=True
     ):
         """
         Run the complete DataMop cleaning pipeline.
-
-        Parameters
-        ----------
-        remove_duplicates : bool
-            Remove duplicate rows.
-
-        handle_missing : bool
-            Handle missing values.
-
-        remove_outliers : bool
-            Remove numerical outliers.
-
-        convert_datatypes : bool
-            Automatically convert data types.
-
-        outlier_method : str
-            'iqr' or 'zscore'.
         """
 
         if self.df is None:
             raise ValueError(
                 "Please load a dataset first."
+            )
+
+        if not isinstance(
+            missing_threshold,
+            (int, float)
+        ):
+            raise TypeError(
+                "missing_threshold must be a number "
+                "between 0 and 100."
+            )
+
+        if not 0 <= missing_threshold <= 100:
+            raise ValueError(
+                "missing_threshold must be between "
+                "0 and 100."
             )
 
         print("\n")
@@ -385,42 +431,62 @@ class DataCleaner:
         print("=" * 70)
 
         # ----------------------------------------------
-        # Data Types
+        # 1. Data Types
         # ----------------------------------------------
 
         if convert_datatypes:
 
-            print("\n[1/4] Converting data types...")
+            print("\n[1/5] Converting data types...")
 
             self.auto_convert_datatypes()
 
         # ----------------------------------------------
-        # Missing Values
+        # 2. Text Standardization
+        # ----------------------------------------------
+
+        if standardize_text:
+
+            print(
+                "\n[2/5] Standardizing text values..."
+            )
+
+            self.standardize_text(
+                case=text_case,
+                normalize_categories=normalize_categories
+            )
+
+        # ----------------------------------------------
+        # 3. Missing Values
         # ----------------------------------------------
 
         if handle_missing:
 
-            print("\n[2/4] Handling missing values...")
+            print(
+                f"\n[3/5] Handling missing values "
+                f"(threshold: {missing_threshold}%)..."
+            )
 
-            self.handle_missing_values()
+            self.handle_missing_values(
+                missing_threshold=missing_threshold
+            )
 
         # ----------------------------------------------
-        # Duplicates
+        # 4. Duplicates
         # ----------------------------------------------
 
         if remove_duplicates:
 
-            print("\n[3/4] Removing duplicates...")
+            print("\n[4/5] Removing duplicates...")
 
             self.remove_duplicates()
 
         # ----------------------------------------------
-        # Outliers
+        # 5. Outliers
         # ----------------------------------------------
 
         if remove_outliers:
 
-            print("\n[4/4] Handling outliers...")
+            print("\n[5/5] Handling outliers...")
 
             if outlier_method.lower() == "iqr":
 
@@ -449,9 +515,7 @@ class DataCleaner:
     # ==================================================
 
     def save(self, filepath):
-        """
-        Save the cleaned DataFrame to CSV or Excel.
-        """
+        """Save the cleaned DataFrame to CSV or Excel."""
 
         if self.df is None:
             raise ValueError(
@@ -502,9 +566,7 @@ class DataCleaner:
     # ==================================================
 
     def cleaning_log(self):
-        """
-        Display the complete DataMop cleaning log.
-        """
+        """Display the complete DataMop cleaning log."""
 
         self.logger.display_logs()
 
@@ -513,9 +575,7 @@ class DataCleaner:
     # ==================================================
 
     def get_cleaning_log(self):
-        """
-        Return the complete cleaning log as DataFrame.
-        """
+        """Return the complete DataMop cleaning log as DataFrame."""
 
         return self.logger.to_dataframe()
 
@@ -524,8 +584,6 @@ class DataCleaner:
     # ==================================================
 
     def get_dataframe(self):
-        """
-        Return the current DataFrame.
-        """
+        """Return the current DataFrame."""
 
         return self.df

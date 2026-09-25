@@ -61,6 +61,34 @@ class MissingValueHandler:
             )
 
     # ==================================================
+    # Validate Threshold
+    # ==================================================
+
+    def _validate_threshold(self, missing_threshold):
+        """
+        Validate the missing-column threshold.
+
+        Parameters
+        ----------
+        missing_threshold : float
+            Percentage between 0 and 100.
+        """
+
+        if not isinstance(
+            missing_threshold,
+            (int, float)
+        ):
+            raise TypeError(
+                "missing_threshold must be a number."
+            )
+
+        if missing_threshold < 0 or missing_threshold > 100:
+            raise ValueError(
+                "missing_threshold must be between "
+                "0 and 100."
+            )
+
+    # ==================================================
     # Detect Missing Values
     # ==================================================
 
@@ -75,6 +103,18 @@ class MissingValueHandler:
         """
 
         self._check_data()
+
+        if len(self.df) == 0:
+
+            return pd.DataFrame({
+                "column": self.df.columns,
+                "missing_count": 0,
+                "missing_percentage": 0.0,
+                "data_type": [
+                    str(self.df[column].dtype)
+                    for column in self.df.columns
+                ]
+            })
 
         missing_count = self.df.isnull().sum()
 
@@ -156,10 +196,92 @@ class MissingValueHandler:
         return round(percentage, 2)
 
     # ==================================================
+    # Drop Columns With High Missing Percentage
+    # ==================================================
+
+    def drop_high_missing_columns(
+        self,
+        missing_threshold=40
+    ):
+        """
+        Automatically remove columns whose missing-value
+        percentage is greater than the threshold.
+
+        Example
+        -------
+        missing_threshold=40
+
+        25% missing -> keep column
+        40% missing -> keep column
+        41% missing -> remove column
+        """
+
+        self._check_data()
+
+        self._validate_threshold(
+            missing_threshold
+        )
+
+        if len(self.df) == 0:
+            return self.df
+
+        missing_percentages = (
+            self.df.isnull().mean() * 100
+        )
+
+        columns_to_drop = (
+            missing_percentages[
+                missing_percentages > missing_threshold
+            ]
+            .index
+            .tolist()
+        )
+
+        if columns_to_drop:
+
+            missing_details = []
+
+            for column in columns_to_drop:
+
+                percentage = round(
+                    float(
+                        missing_percentages[column]
+                    ),
+                    2
+                )
+
+                missing_details.append(
+                    f"{column} ({percentage}%)"
+                )
+
+            self.df = self.df.drop(
+                columns=columns_to_drop
+            )
+
+            self.logs.append(
+                "Dropped columns with more than "
+                f"{missing_threshold}% missing values: "
+                + ", ".join(missing_details)
+            )
+
+        else:
+
+            self.logs.append(
+                "No columns exceeded the "
+                f"{missing_threshold}% missing-value threshold."
+            )
+
+        return self.df
+
+    # ==================================================
     # Fill Numerical Columns
     # ==================================================
 
-    def fill_numeric(self, strategy="median", value=None):
+    def fill_numeric(
+        self,
+        strategy="median",
+        value=None
+    ):
         """
         Fill missing values in numerical columns.
 
@@ -341,7 +463,7 @@ class MissingValueHandler:
         return self.df
 
     # ==================================================
-    # Drop Columns
+    # Drop Specific Columns
     # ==================================================
 
     def drop_columns(
@@ -350,7 +472,8 @@ class MissingValueHandler:
         missing_threshold=50
     ):
         """
-        Drop columns having excessive missing values.
+        Drop specific columns or columns having excessive
+        missing values.
 
         Parameters
         ----------
@@ -362,6 +485,10 @@ class MissingValueHandler:
         """
 
         self._check_data()
+
+        self._validate_threshold(
+            missing_threshold
+        )
 
         if columns is not None:
 
@@ -384,60 +511,76 @@ class MissingValueHandler:
 
             return self.df
 
-        missing_percentages = (
-            self.df.isnull().mean() * 100
+        return self.drop_high_missing_columns(
+            missing_threshold=missing_threshold
         )
-
-        columns_to_drop = (
-            missing_percentages[
-                missing_percentages >
-                missing_threshold
-            ]
-            .index
-            .tolist()
-        )
-
-        if columns_to_drop:
-
-            self.df = self.df.drop(
-                columns=columns_to_drop
-            )
-
-            self.logs.append(
-                f"Removed columns with more than "
-                f"{missing_threshold}% missing values: "
-                f"{columns_to_drop}"
-            )
-
-        return self.df
 
     # ==================================================
     # Automatic Handling
     # ==================================================
 
-    def auto_fill(self):
+    def auto_fill(
+        self,
+        missing_threshold=40
+    ):
         """
         Automatically handle missing values.
+
+        Rule
+        ----
+        Columns with more than the configured missing
+        percentage are removed first.
+
+        Default:
+            40%
 
         Numerical columns:
             Median
 
         Categorical columns:
             Mode
+
+        Example
+        -------
+        35% missing -> fill
+        40% missing -> fill
+        45% missing -> drop
         """
 
         self._check_data()
 
+        self._validate_threshold(
+            missing_threshold
+        )
+
+        # ----------------------------------------------
+        # Step 1: Remove columns with excessive missing
+        # values before performing imputation.
+        # ----------------------------------------------
+
+        self.drop_high_missing_columns(
+            missing_threshold=missing_threshold
+        )
+
+        # ----------------------------------------------
+        # Step 2: Fill remaining numerical columns
+        # ----------------------------------------------
+
         self.fill_numeric(
             strategy="median"
         )
+
+        # ----------------------------------------------
+        # Step 3: Fill remaining categorical columns
+        # ----------------------------------------------
 
         self.fill_categorical(
             strategy="mode"
         )
 
         self.logs.append(
-            "Automatic missing-value handling completed."
+            "Automatic missing-value handling completed "
+            f"with a {missing_threshold}% column threshold."
         )
 
         return self.df
